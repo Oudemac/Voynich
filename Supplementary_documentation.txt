@@ -1,0 +1,225 @@
+
+---
+
+**File: main.py**
+
+```python
+#!/usr/bin/env python3
+"""
+Integrated Computational Pipeline for the Voynich Manuscript
+This script demonstrates a simplified version of the pipeline that:
+- Processes multispectral transcriptions and segments the manuscript by thematic section.
+- Runs transformer-based fine-tuning on synthetic parallel data.
+- Executes an evolutionary algorithm to refine glyph mappings.
+- Constructs a co-occurrence network for thematic clustering.
+- Integrates multimodal image-text analysis.
+- Applies expert heuristic post-processing to generate candidate translations.
+- Outputs simulated metrics and final candidate translations.
+"""
+
+import math
+import random
+import torch
+from transformers import T5ForConditionalGeneration, T5Tokenizer
+import networkx as nx
+from deap import base, creator, tools, algorithms
+import gensim
+from gensim import corpora
+from collections import Counter
+import numpy as np
+
+# ---------------------------
+# Data Acquisition and Pre-Processing (Simulated)
+# ---------------------------
+def load_transcription(section_name):
+    # Simulated transcription for demonstration
+    placeholders = {
+        "botanical": "qo kch ar qo kch arin qo kch qo tar arin qo kch tar inar",
+        "astronomical": "inar qo tar qo kch inar tar qo kch arin qo tar inar",
+        "balneological": "qo inar kch tar inar qo arin kch inar tar qo kch inar",
+        "pharmaceutical": "tar qo kch arin tar qo kch inar qo tar arin kch inar tar qo",
+        "recipes": "qo kch inar tar qo arin kch tar inar qo kch tar inar qo kch"
+    }
+    return placeholders.get(section_name, "").split()
+
+sections = ["botanical", "astronomical", "balneological", "pharmaceutical", "recipes"]
+
+# ---------------------------
+# Transformer-Based AI Module (Simulated)
+# ---------------------------
+def fine_tune_transformer():
+    # Load a pre-trained T5 model and tokenizer
+    model_name = "t5-small"
+    tokenizer = T5Tokenizer.from_pretrained(model_name)
+    model = T5ForConditionalGeneration.from_pretrained(model_name)
+    return model, tokenizer
+
+def simulate_transformer_translation(section_text, section):
+    # In practice, you would run fine-tuned model on the input text
+    simulated_outputs = {
+        "botanical": "Herba aquae fortis miscenda cum igni et sole, bene curatur; in herbario antiquo, herbae virides et medicamenta secreta ex radicibus et foliis reperiuntur.",
+        "astronomical": "Sol et luna in orbe celesti apparebunt, cum signis zodiacalibus et ordine stellarum manifestatis; caelum alternat inter lucem et obscuritatem.",
+        "balneological": "Balnea sacra et rituale purgatio praebent undam et fumum sanationis, conferentes sanitatem corporis et animi.",
+        "pharmaceutical": "Medicamenta ex herbis et mineralibus conficiuntur, formula secreta naturae potentiam revelans ad corpus sanandum; incantamenta mystica servantur.",
+        "recipes": "Incipe cum herba, addita aqua et igni mixto, coques per tempus determinatum ut remedium perfectum obtineas; haec praeparatio ordinet virtutes et sapientiam antiquitatis."
+    }
+    return simulated_outputs[section]
+
+# ---------------------------
+# Evolutionary Algorithm Module (Simulated)
+# ---------------------------
+voynich_alphabet = ['qo', 'kch', 'arin', 'tar']
+latin_candidates = ['her', 'ba', 'aqua', 'igni', 'sol']
+
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+creator.create("Individual", dict, fitness=creator.FitnessMax)
+toolbox = base.Toolbox()
+toolbox.register("individual", lambda: {symbol: random.choice(latin_candidates) for symbol in voynich_alphabet})
+toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+def compute_base_fitness(mapping, section_words, target_words):
+    mapped_words = []
+    for word in section_words:
+        for symbol in voynich_alphabet:
+            word = word.replace(symbol, mapping.get(symbol, ""))
+        mapped_words.append(word)
+    freq = Counter(mapped_words)
+    score = 0
+    for word, count in freq.items():
+        if "her" in word:
+            score += count
+    return score
+
+def eval_mapping(individual, section_words, target_words, expert_feedback):
+    base_score = compute_base_fitness(individual, section_words, target_words)
+    expert_bonus = 0
+    for glyph, expected in expert_feedback.items():
+        candidate = individual.get(glyph, "")
+        if candidate == expected:
+            expert_bonus += 10
+        else:
+            expert_bonus -= 5
+    return (base_score + expert_bonus,)
+
+toolbox.register("evaluate", eval_mapping, section_words=load_transcription("botanical"), target_words=load_transcription("botanical"), expert_feedback={'qo': 'her'})
+toolbox.register("mate", tools.cxTwoPoint)
+toolbox.register("mutate", tools.mutShuffleIndexes, indpb=0.5)
+toolbox.register("select", tools.selTournament, tournsize=3)
+
+def run_evolutionary_module(section):
+    section_words = load_transcription(section)
+    # For simulation, using same target_words and expert_feedback for demonstration
+    target_words = section_words
+    expert_feedback = {'qo': 'her', 'kch': 'ba', 'arin': 'aqua', 'tar': 'igni'}
+    population = toolbox.population(n=200)
+    ngen = 100
+    for gen in range(ngen):
+        offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.2)
+        fits = list(map(lambda ind: toolbox.evaluate(ind, section_words, target_words, expert_feedback), offspring))
+        for fit, ind in zip(fits, offspring):
+            ind.fitness.values = fit
+        population = toolbox.select(offspring, k=len(population))
+    best = tools.selBest(population, k=1)[0]
+    return best
+
+# ---------------------------
+# Network and Clustering Module (Simulated)
+# ---------------------------
+def build_cooccurrence_network(words, window_size=5):
+    G = nx.Graph()
+    for i in range(len(words)):
+        for j in range(1, window_size):
+            if i + j < len(words):
+                if G.has_edge(words[i], words[i+j]):
+                    G[words[i]][words[i+j]]['weight'] += 1
+                else:
+                    G.add_edge(words[i], words[i+j], weight=1)
+    return G
+
+def detect_communities(G):
+    communities = nx.algorithms.community.greedy_modularity_communities(G)
+    return communities
+
+# ---------------------------
+# Multimodal Integration (Simulated)
+# ---------------------------
+def simulate_multimodal_alignment(section):
+    # For simulation, return a cosine similarity value
+    # In a real system, this function computes embeddings using a CLIP-like model
+    similarities = {"botanical": 0.82, "astronomical": 0.80, "balneological": 0.81, "pharmaceutical": 0.83, "recipes": 0.80}
+    return similarities.get(section, 0.80)
+
+# ---------------------------
+# Expert Heuristic Post-Processing (Simulated)
+# ---------------------------
+def expert_heuristic_postprocess(raw_text, section):
+    corrections = {
+        "botanical": raw_text.replace("miscenda", "miscenda cum igni et sole, bene curatur"),
+        "astronomical": raw_text.replace("orbe", "orbe celesti"),
+        "balneological": raw_text.replace("purgatio", "purgatio praebent"),
+        "pharmaceutical": raw_text.replace("conficiuntur", "conficiuntur, formula secreta revelans naturae potentiam"),
+        "recipes": raw_text.replace("coques per tempus determinatum", "coques per tempus determinatum ut remedium perfectum obtineas")
+    }
+    return corrections.get(section, raw_text)
+
+# ---------------------------
+# Iterative Pipeline Execution (Simulated)
+# ---------------------------
+def run_pipeline_for_section(section):
+    # Load transcription for the section
+    section_words = load_transcription(section)
+    
+    # Simulate transformer output
+    transformer_output = simulate_transformer_translation(section_words, section)
+    
+    # Run evolutionary mapping module
+    best_mapping = run_evolutionary_module(section)
+    
+    # For simulation, print the best mapping
+    print(f"Best mapping for {section}: {best_mapping}")
+    
+    # Simulate network analysis
+    G = build_cooccurrence_network(section_words)
+    communities = detect_communities(G)
+    
+    # Simulate multimodal alignment score
+    multimodal_score = simulate_multimodal_alignment(section)
+    
+    # Apply expert heuristic post-processing
+    refined_output = expert_heuristic_postprocess(transformer_output, section)
+    
+    # Simulate metric computation
+    metrics = {
+        "conditional_entropy": round(3.45 + random.uniform(-0.03, 0.03), 2),
+        "topic_coherence": round(0.78 + random.uniform(-0.02, 0.02), 2),
+        "mapping_variance": round(0.07 + random.uniform(-0.01, 0.01), 2),
+        "expert_score": random.randint(88, 90),
+        "cosine_similarity": multimodal_score
+    }
+    
+    result = {
+        "section": section,
+        "transformer_output": transformer_output,
+        "evolutionary_mapping": best_mapping,
+        "network_communities": communities,
+        "refined_output": refined_output,
+        "metrics": metrics
+    }
+    return result
+
+def run_full_pipeline():
+    results = {}
+    for section in sections:
+        results[section] = run_pipeline_for_section(section)
+    return results
+
+# Run the pipeline for all sections and print final metrics
+final_results = run_full_pipeline()
+for sec, data in final_results.items():
+    print("\n=== Section:", sec.capitalize(), "===")
+    print("Refined Output:")
+    print(data["refined_output"])
+    print("Metrics:", data["metrics"])
+    print("Network Communities:", list(data["network_communities"]))
+
+# End of main.py
